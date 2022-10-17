@@ -1,0 +1,174 @@
+---
+title: "Mental Health in Tech"
+author: "Prashanth Paisa"
+date: "2022-10-16"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Library Packages used here
+
+```{r}
+library(readxl)
+library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(ggplot2)
+```
+#Reading source file having data in two separate sheets
+
+```{r}
+#Loading individual datasheets
+
+df_mental_datasheet_1 <- read_excel("survey.xlsx", sheet = "Sheet1", 
+                              col_types = c("date", "numeric", "text", 
+                                            "text", "text", "text", "text", "text", 
+                                            "text", "text", "text", "text", "text", 
+                                            "text", "text", "text", "text", "text", 
+                                            "text", "text", "text", "text", "text", 
+                                            "text", "text", "text", "text"))
+
+df_mental_datasheet_2 <- read_excel("survey.xlsx", sheet = "Sheet 2", 
+                              col_types = c("date", "numeric", "text", 
+                                            "text", "text", "text", "text", "text", 
+                                            "text", "text", "text", "text", "text", 
+                                            "text", "text", "text", "text", "text", 
+                                            "text", "text", "text", "text", "text", 
+                                            "text", "text", "text", "text"))
+
+#Adding two datasheet into one
+
+df_mental <- merge(df_mental_datasheet_1, df_mental_datasheet_2, all.x= TRUE, all.y = TRUE) 
+
+```
+```{r}
+#Observing combined Mental Heath data
+view(df_mental)
+```
+```{r}
+#Handling missing values
+
+df_mental$Timestamp <- as.character(df_mental$Timestamp) 
+df_mental$Timestamp[is.na(df_mental$Timestamp)] <- " "
+```
+```{r}
+#Finding and removing missing values
+
+df_mental_final <- df_mental %>% drop_na()
+```
+```{r}
+#Converting the columns names format into lowercase
+
+names(df_mental_final)[1]<-"timestamp"
+names(df_mental_final)[2]<-"age"
+names(df_mental_final)[3]<-"gender"
+names(df_mental_final)[4]<-"country"
+```
+```{r}
+#Plotting histogram of Age distribution of ages between 10 and 75
+
+df_mental_final <- 
+  df_mental_final[-c(which(df_mental_final$age > 75 | df_mental_final$age < 10)), ]
+
+summary(df_mental_final$age)
+hist(df_mental_final$age)
+```
+```{r}
+#Fixing Gender Data by converting all into Male, Female and Others
+
+df_mental_final$gender <- tolower(df_mental_final$gender)
+col_gender <- as.vector(df_mental_final$gender)
+
+Female <- 
+  c('female', 'cis female', 'f', 'woman', 'femake', 'female ', 'cis-female/femme', 'female (cis)', 'femail')
+
+Male <-  
+  c('m', 'male', 'male-ish', 'maile', 'cis male', 'mal', 'male (cis)', 'make', 'male ', 'man', 'msle', 'mail', 'malr', 'cis man','Mle') 
+
+Others <- 
+  c('queer/she/they', 'non-binary', 'nah', 'enby', 'fluid', 'genderqueer', 'androgyne', 'agender', 'guy (-ish) ^_^', 'male leaning androgynous', 'neuter', 'queer', 'ostensibly male, unsure what that really means','a little about you','p','all', 'trans-female', 'trans woman', 'female (trans)','something kinda male?', '1','2')
+
+col_gender <- sapply(as.vector(col_gender), function(x) if(x %in% Male) "Male" else x)
+col_gender <- sapply(as.vector(col_gender), function(x) if(x %in% Female) "Female" else x)
+col_gender <- sapply(as.vector(col_gender), function(x) if(x %in% Others) "Others" else x)
+
+df_mental_final$gender <- col_gender
+```
+```{r}
+#Removing Timestamp
+
+df_mental_final <- df_mental_final[,-1]
+```
+```{r}
+#Replacing country data "US" with "United States"
+
+df_mental_final$country[df_mental_final$country=="US"]<-"United States"
+```
+```{r}
+#Finding incorrect values of number of employees
+unique(df_mental_final$no_employees)
+table(df_mental_final$no_employees)
+```
+```{r}
+#Converting treatment into Yes, No and NA
+
+table(df_mental_final$treatment)
+
+df_mental_final$treatment[df_mental_final$treatment=="N"]<-"No"
+df_mental_final$treatment[df_mental_final$treatment=="-"]<-"NA"
+df_mental_final$treatment[df_mental_final$treatment=="Y"]<-"Yes"
+```
+```{r}
+#Replacing work_interfere data to 0 to Never
+
+table(df_mental_final$work_interfere)
+
+df_mental_final$work_interfere[df_mental_final$work_interfere=="0"]<-"Never"
+```
+```{r}
+#Fixing and converting "-" to No
+
+table(df_mental_final$remote_work)
+
+df_mental_final$remote_work[df_mental_final$remote_work=="-"]<-"No"
+```
+```{r}
+#Converting phys_health_consequence data to No from N and 2
+
+table(df_mental_final$phys_health_consequence)
+
+df_mental_final$phys_health_consequence[df_mental_final$phys_health_consequence=="N"]<-"No"
+df_mental_final$phys_health_consequence[df_mental_final$phys_health_consequence=="2"]<-"No"
+```
+```{r}
+#Barplot of surveying contries
+
+data_country <- ggplot(df_mental_final, aes(country))
+data_country + geom_bar(width = 0.5) + 
+  coord_flip() +
+  theme(axis.text.x = element_text(angle=90, hjust=0.5, vjust=0.5)) +
+  labs(title="Distribution of survey participant countries")
+```
+```{r}
+#Histogram plot of Age distribution
+
+qplot(df_mental_final$age,
+      geom="histogram",
+      binwidth = 5,  
+      main = "Histogram for Age", 
+      xlab = "Age",  
+      fill=I("cyan"), 
+      col=I("black"), 
+      alpha=I(.2),
+      xlim=c(10,100))
+```
+```{r}
+#Saving the processed data into cleaned_mental_dataset.csv
+
+write.csv(df_mental_final, "cleaned_mental_dataset.csv")
+
+```
+
